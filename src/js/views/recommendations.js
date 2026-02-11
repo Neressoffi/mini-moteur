@@ -1,4 +1,5 @@
 import { fetchPopularMovies } from '../api/tmdb.js';
+import { scoreMovies, formatScore } from '../utils/scoring.js';
 
 export function renderRecommendationsView(root) {
   const container = document.createElement('section');
@@ -29,7 +30,10 @@ async function loadPopularMovies(listEl) {
       return;
     }
 
-    listEl.innerHTML = movies
+    // calculer un score pour chaque film et trier
+    const scored = scoreMovies(movies);
+
+    listEl.innerHTML = scored
       .map((movie) => createMovieCardHtml(movie))
       .join('');
   } catch (error) {
@@ -48,6 +52,7 @@ function createMovieCardHtml(movie) {
   const rating = movie.vote_average
     ? movie.vote_average.toFixed(1)
     : '—';
+  const score = movie._score !== undefined ? formatScore(movie._score) : null;
 
   return `
     <article class="movie-card">
@@ -60,6 +65,7 @@ function createMovieCardHtml(movie) {
       <div class="movie-card__meta">
         <span>${year}</span>
         <span>⭐ ${rating}</span>
+        ${score !== null ? `<span class="movie-card__score">Score: ${score}</span>` : ''}
       </div>
     </article>
   `;
