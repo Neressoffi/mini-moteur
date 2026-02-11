@@ -121,3 +121,31 @@ body {
   }
 }
 
+.fav-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s ease;
+
+  .heart-icon {
+    width: 28px;
+    height: 28px;
+    fill: transparent;
+    stroke: #ff4d6d;
+    stroke-width: 2;
+    transition: all 0.3s ease;
+  }
+
+  &:hover {
+    transform: scale(1.1);
+  }
+
+  &.active {
+    .heart-icon {
+      fill: #ff4d6d;
+      stroke: #ff4d6d;
+      transform: scale(1.15);
+    }
+  }
+}
