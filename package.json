@@ -1,0 +1,24 @@
+{
+  "name": "mini-moteur",
+  "version": "1.0.0",
+  "description": "Projet pédagogique : mini moteur de recommandation de films basé sur l’API TMDB.",
+  "main": "index.js",
+  "scripts": {
+    "build:css": "sass src/styles/main.scss dist/styles.css",
+    "watch:css": "sass --watch src/styles/main.scss dist/styles.css"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Neressoffi/mini-moteur.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Neressoffi/mini-moteur/issues"
+  },
+  "homepage": "https://github.com/Neressoffi/mini-moteur#readme",
+  "devDependencies": {
+    "sass": "^1.97.3"
+  }
+}
