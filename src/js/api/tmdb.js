@@ -38,3 +38,23 @@ export async function fetchPopularMovies(page = 1) {
   const data = await response.json();
   return data.results; // tableau de films
 }
+
+export async function fetchSimilarMovies(movieId, page = 1) {
+  if (!movieId) throw new Error("movieId requis pour fetchSimilarMovies");
+
+  const url = buildUrl(`/movie/${movieId}/similar`, { page });
+
+  const response = await fetch(url, {
+    headers: {
+      accept: "application/json",
+      Authorization: `Bearer ${ACCESS_TOKEN}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Erreur API TMDB (${response.status})`);
+  }
+
+  const data = await response.json();
+  return data.results; // tableau de films similaires
+}

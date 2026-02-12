@@ -1,8 +1,7 @@
-import { fetchPopularMovies } from "../api/tmdb.js";
+import { fetchPopularMovies, fetchSimilarMovies } from "../api/tmdb.js";
 import { scoreMovies, formatScore } from "../utils/scoring.js";
 import { addFavorite, removeFavorite, isFavorite } from "../utils/favorites.js";
-
-export function renderRecommendationsView(root) {
+export function renderRecommendationsView(root, params = {}) {
   const container = document.createElement("section");
   container.className = "view view-recommendations";
   container.innerHTML = `
@@ -17,47 +16,94 @@ export function renderRecommendationsView(root) {
   root.appendChild(container);
 
   const listEl = container.querySelector("#movies-list");
-  loadPopularMovies(listEl);
-}
 
-async function loadPopularMovies(listEl) {
-  listEl.innerHTML = "<p>Chargement des films populaires...</p>";
+  // état courant des films affichés (pour gérer favoris)
+  let currentMovies = [];
 
-  try {
-    const movies = await fetchPopularMovies();
-
-    if (!movies.length) {
-      listEl.innerHTML = "<p>Aucun film trouvé.</p>";
+  // gestion des clics sur la liste : favoris et navigation vers similar
+  listEl.addEventListener("click", (e) => {
+    const favBtn = e.target.closest(".fav-btn");
+    if (favBtn) {
+      const movieId = parseInt(favBtn.dataset.id, 10);
+      if (isFavorite(movieId)) {
+        removeFavorite(movieId);
+        favBtn.classList.remove("active");
+      } else {
+        const movie = currentMovies.find((m) => m.id === movieId);
+        if (movie) addFavorite(movie);
+        favBtn.classList.add("active");
+      }
       return;
     }
 
-    // calculer un score pour chaque film et trier
-    const scored = scoreMovies(movies);
-    console.log("Films avec scores calculés :", scored);
-    listEl.innerHTML = scored
-      .map((movie) => createMovieCardHtml(movie))
-      .join("");
-
-    document.addEventListener("click", (e) => {
-      const button = e.target.closest(".fav-btn");
-      if (!button) return;
-
-      const movieId = parseInt(button.dataset.id);
-
-      if (isFavorite(movieId)) {
-        removeFavorite(movieId);
-        button.classList.remove("active");
-      } else {
-        const movie = scored.find((m) => m.id === movieId);
-        addFavorite(movie);
-        button.classList.add("active");
+    const card = e.target.closest('.movie-card');
+    if (card) {
+      const id = parseInt(card.dataset.id, 10);
+      if (!Number.isNaN(id)) {
+        // naviguer vers la vue recommendations pour cet id (similar)
+        window.location.hash = `#/recommandations/${id}`;
       }
-    });
+    }
+  });
 
-  } catch (error) {
-    console.error(error);
-    listEl.innerHTML =
-      "<p>Erreur lors du chargement des films. Vérifie ta connexion et ta clé TMDB.</p>";
+  if (params && params.id) {
+    // bouton retour
+    const backBtn = document.createElement('button');
+    backBtn.className = 'back-btn';
+    backBtn.textContent = '← Retour';
+    backBtn.addEventListener('click', () => {
+      window.location.hash = '#/recommandations';
+    });
+    container.querySelector('h2').after(backBtn);
+
+    loadSimilarMovies(listEl, params.id);
+  } else {
+    loadPopularMovies(listEl);
+  }
+
+  async function loadPopularMovies(listEl) {
+    listEl.innerHTML = "<p>Chargement des films populaires...</p>";
+
+    try {
+      const movies = await fetchPopularMovies();
+
+      if (!movies.length) {
+        listEl.innerHTML = "<p>Aucun film trouvé.</p>";
+        return;
+      }
+
+      // calculer un score pour chaque film et trier
+      const scored = scoreMovies(movies);
+      currentMovies = scored;
+      console.log("Films avec scores calculés :", scored);
+      listEl.innerHTML = scored.map((movie) => createMovieCardHtml(movie)).join("");
+    } catch (error) {
+      console.error(error);
+      listEl.innerHTML =
+        "<p>Erreur lors du chargement des films. Vérifie ta connexion et ta clé TMDB.</p>";
+    }
+  }
+
+  async function loadSimilarMovies(listEl, movieId) {
+    listEl.innerHTML = `<p>Chargement des suggestions similaires pour le film ${movieId}...</p>`;
+
+    try {
+      const movies = await fetchSimilarMovies(movieId);
+
+      if (!movies || !movies.length) {
+        listEl.innerHTML = "<p>Aucune suggestion trouvée pour ce film.</p>";
+        return;
+      }
+
+      const scored = scoreMovies(movies);
+      currentMovies = scored;
+      console.log(`Suggestions similaires pour ${movieId} :`, scored);
+      listEl.innerHTML = scored.map((movie) => createMovieCardHtml(movie)).join("");
+    } catch (error) {
+      console.error(error);
+      listEl.innerHTML =
+        "<p>Erreur lors du chargement des suggestions. Vérifie ta connexion et ta clé TMDB.</p>";
+    }
   }
 }
 
@@ -72,7 +118,7 @@ function createMovieCardHtml(movie) {
   const score = movie._score !== undefined ? formatScore(movie._score) : null;
 
   return `
-    <article class="movie-card">
+    <article class="movie-card" data-id="${movie.id}">
       ${
         posterUrl
           ? `<img class="movie-card__poster" src="${posterUrl}" alt="${movie.title}" loading="lazy" />`

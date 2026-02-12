@@ -18,10 +18,20 @@ export function initRouter() {
 function handleRouteChange() {
   const root = document.getElementById('app-root');
   const hash = window.location.hash || '#/';
-  const path = hash.replace('#', '');
+  const raw = hash.replace('#', ''); // ex: '/recommandations/123' ou '/'
 
-  const view = routes[path] || renderHomeView;
+  // découper les segments pour récupérer un éventuel id: #/recommandations/123
+  const segments = raw.split('/').filter(Boolean); // ['recommandations','123']
+  const base = '/' + (segments[0] || '');
+  const params = {};
+  if (segments[1]) {
+    const id = parseInt(segments[1], 10);
+    if (!Number.isNaN(id)) params.id = id;
+  }
+
+  const view = routes[base] || renderHomeView;
   root.innerHTML = '';
-  view(root);
+  // les vues peuvent accepter (root, params)
+  view(root, params);
 }
 
