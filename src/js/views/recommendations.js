@@ -353,6 +353,13 @@ async function loadInitialData({
     allMovies = scored;
     allGenres = genres;
 
+    // Exposer globalement pour que d'autres vues puissent y accéder
+    window.allMovies = allMovies;
+    window.updateHomeStats = updateHomeStats;
+
+    // Mettre à jour les statistiques affichées sur la page d'accueil (si présente)
+    updateHomeStats(allMovies);
+
     // Hydrater les selects et rendre la liste filtrée (qui utilisera allMovies)
     hydrateGenreSelect(genreSelect);
     hydrateLanguageSelect(languageSelect);
@@ -384,28 +391,23 @@ async function loadInitialData({
     console.error(error);
     listEl.innerHTML =
       "<p>Erreur lors du chargement des films. Vérifie ta connexion et ta clé TMDB.</p>";
-    allMovies = movies ?? [];
-    allGenres = genres ?? [];
+    // En cas d'erreur, vider les caches et informer l'utilisateur
+    allMovies = [];
+    allGenres = [];
+    window.allMovies = allMovies;
+    // Mettre à jour l'accueil si présent
+    if (window.updateHomeStats) window.updateHomeStats(allMovies);
 
-    if (!allMovies.length) {
-      listEl.innerHTML = "<p>Aucun film trouvé.</p>";
-      countBadge.textContent = "0 film";
-      return;
-    }
-
+    listEl.innerHTML = "<p>Erreur lors du chargement des films. Vérifie ta connexion et ta clé TMDB.</p>";
+    countBadge.textContent = "Erreur";
     hydrateGenreSelect(genreSelect);
     hydrateLanguageSelect(languageSelect);
-
     renderFilteredMovies(
       listEl,
       countBadge,
       comparatorSection,
       comparatorTable,
     );
-    console.error(error);
-    listEl.innerHTML =
-      "<p>Erreur lors du chargement des films. Vérifie ta connexion et ta clé TMDB.</p>";
-    countBadge.textContent = "Erreur";
   }
 }
 
@@ -753,6 +755,35 @@ function updateDashboard(movies) {
 
   // 4. Répartition par genre
   updateGenreChart(movies);
+}
+
+function updateHomeStats(movies = []) {
+  const totalEl = document.getElementById("home-total-films");
+  const topRatedEl = document.getElementById("home-top-rated");
+  const mostRecentEl = document.getElementById("home-most-recent");
+
+  if (!totalEl && !topRatedEl && !mostRecentEl) return;
+
+  const total = Array.isArray(movies) ? movies.length : 0;
+  if (totalEl) totalEl.textContent = total > 1 ? `${total} films` : `${total} film`;
+
+  if (topRatedEl) {
+    const rated = (movies || []).filter((m) => typeof m.vote_average === "number");
+    if (!rated.length) topRatedEl.textContent = "—";
+    else {
+      const best = rated.reduce((a, b) => (b.vote_average > a.vote_average ? b : a));
+      topRatedEl.textContent = `${best.title} (${best.vote_average.toFixed(1)})`;
+    }
+  }
+
+  if (mostRecentEl) {
+    const withDate = (movies || []).filter((m) => m.release_date);
+    if (!withDate.length) mostRecentEl.textContent = "—";
+    else {
+      const recent = withDate.reduce((a, b) => (b.release_date > a.release_date ? b : a));
+      mostRecentEl.textContent = `${recent.title} (${recent.release_date.slice(0, 4)})`;
+    }
+  }
 }
 
 function updateGenreChart(movies) {
