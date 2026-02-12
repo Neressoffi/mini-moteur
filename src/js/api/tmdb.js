@@ -38,3 +38,40 @@ export async function fetchPopularMovies(page = 1) {
   const data = await response.json();
   return data.results; // tableau de films
 }
+
+export async function fetchMovieGenres() {
+  const url = buildUrl('/genre/movie/list');
+
+  const response = await fetch(url, {
+    headers: {
+      accept: 'application/json',
+      Authorization: `Bearer ${ACCESS_TOKEN}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Erreur API TMDB (genres: ${response.status})`);
+  }
+
+  const data = await response.json();
+  return data.genres; // [{ id, name }]
+}
+
+export async function fetchMovieDetails(movieId) {
+  const url = buildUrl(`/movie/${movieId}`, {
+    append_to_response: 'credits,videos',
+  });
+
+  const response = await fetch(url, {
+    headers: {
+      accept: 'application/json',
+      Authorization: `Bearer ${ACCESS_TOKEN}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Erreur API TMDB (détails: ${response.status})`);
+  }
+
+  const data = await response.json();
+  return data; // Détails complets du film
+}
+
