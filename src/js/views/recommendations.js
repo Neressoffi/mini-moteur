@@ -1,25 +1,27 @@
+import { scoreMovies, formatScore } from "../utils/scoring.js";
+import { addFavorite, removeFavorite, isFavorite } from "../utils/favorites.js";
 import {
   fetchPopularMovies,
   fetchMovieGenres,
   fetchMovieDetails,
-} from '../api/tmdb.js';
+} from "../api/tmdb.js";
 
 let allMovies = [];
 let allGenres = [];
 
 const defaultFilters = {
-  genreId: 'all',
-  minYear: '',
+  genreId: "all",
+  minYear: "",
   minRating: 0,
-  language: 'all',
+  language: "all",
 };
 
 let currentFilters = { ...defaultFilters };
 let selectedMoviesForComparison = []; // Max 2 films
 
 export function renderRecommendationsView(root) {
-  const container = document.createElement('section');
-  container.className = 'view view-recommendations';
+  const container = document.createElement("section");
+  container.className = "view view-recommendations";
   container.innerHTML = `
     <div class="view-header">
       <div>
@@ -149,32 +151,45 @@ export function renderRecommendationsView(root) {
 
   root.appendChild(container);
 
-  const listEl = container.querySelector('#movies-list');
-  const genreSelect = container.querySelector('#filter-genre');
-  const yearInput = container.querySelector('#filter-year');
-  const ratingRange = container.querySelector('#filter-rating');
-  const ratingValue = container.querySelector('#filter-rating-value');
-  const languageSelect = container.querySelector('#filter-language');
-  const resetButton = container.querySelector('#filters-reset');
-  const countBadge = container.querySelector('#movies-count-badge');
+  const listEl = container.querySelector("#movies-list");
+  loadPopularMovies(listEl, container);
+}
+
+async function loadPopularMovies(listEl, container) {
+  listEl.innerHTML = "<p>Chargement des films populaires...</p>";
+  // const listEl = container.querySelector("#movies-list");
+  const genreSelect = container.querySelector("#filter-genre");
+  const yearInput = container.querySelector("#filter-year");
+  const ratingRange = container.querySelector("#filter-rating");
+  const ratingValue = container.querySelector("#filter-rating-value");
+  const languageSelect = container.querySelector("#filter-language");
+  const resetButton = container.querySelector("#filters-reset");
+  const countBadge = container.querySelector("#movies-count-badge");
 
   // Sliders de pondération
-  const weightPopularity = container.querySelector('#weight-popularity');
-  const weightRating = container.querySelector('#weight-rating');
-  const weightRecency = container.querySelector('#weight-recency');
-  const weightPopularityValue = container.querySelector('#weight-popularity-value');
-  const weightRatingValue = container.querySelector('#weight-rating-value');
-  const weightRecencyValue = container.querySelector('#weight-recency-value');
+  const weightPopularity = container.querySelector("#weight-popularity");
+  const weightRating = container.querySelector("#weight-rating");
+  const weightRecency = container.querySelector("#weight-recency");
+  const weightPopularityValue = container.querySelector(
+    "#weight-popularity-value",
+  );
+  const weightRatingValue = container.querySelector("#weight-rating-value");
+  const weightRecencyValue = container.querySelector("#weight-recency-value");
 
-  const comparatorSection = container.querySelector('#comparator-section');
-  const comparatorTable = container.querySelector('#comparator-table');
-  const comparatorClear = container.querySelector('#comparator-clear');
+  const comparatorSection = container.querySelector("#comparator-section");
+  const comparatorTable = container.querySelector("#comparator-table");
+  const comparatorClear = container.querySelector("#comparator-clear");
 
   if (comparatorClear) {
-    comparatorClear.addEventListener('click', () => {
+    comparatorClear.addEventListener("click", () => {
       selectedMoviesForComparison = [];
       updateComparator(comparatorSection, comparatorTable);
-      renderFilteredMovies(listEl, countBadge, comparatorSection, comparatorTable);
+      renderFilteredMovies(
+        listEl,
+        countBadge,
+        comparatorSection,
+        comparatorTable,
+      );
     });
   }
 
@@ -186,26 +201,31 @@ export function renderRecommendationsView(root) {
 
   function updateWeight(type, value) {
     window.recommendationWeights[type] = Number(value);
-    if (type === 'popularity') weightPopularityValue.textContent = `(${value})`;
-    if (type === 'rating') weightRatingValue.textContent = `(${value})`;
-    if (type === 'recency') weightRecencyValue.textContent = `(${value})`;
-    renderFilteredMovies(listEl, countBadge, comparatorSection, comparatorTable);
+    if (type === "popularity") weightPopularityValue.textContent = `(${value})`;
+    if (type === "rating") weightRatingValue.textContent = `(${value})`;
+    if (type === "recency") weightRecencyValue.textContent = `(${value})`;
+    renderFilteredMovies(
+      listEl,
+      countBadge,
+      comparatorSection,
+      comparatorTable,
+    );
   }
 
-  weightPopularity.addEventListener('input', (e) => {
-    updateWeight('popularity', e.target.value);
+  weightPopularity.addEventListener("input", (e) => {
+    updateWeight("popularity", e.target.value);
   });
-  weightRating.addEventListener('input', (e) => {
-    updateWeight('rating', e.target.value);
+  weightRating.addEventListener("input", (e) => {
+    updateWeight("rating", e.target.value);
   });
-  weightRecency.addEventListener('input', (e) => {
-    updateWeight('recency', e.target.value);
+  weightRecency.addEventListener("input", (e) => {
+    updateWeight("recency", e.target.value);
   });
 
   // Bouton "Surprise Me"
-  const surpriseMeBtn = container.querySelector('#surprise-me-btn');
+  const surpriseMeBtn = container.querySelector("#surprise-me-btn");
   if (surpriseMeBtn) {
-    surpriseMeBtn.addEventListener('click', () => {
+    surpriseMeBtn.addEventListener("click", () => {
       surpriseMe(listEl, countBadge, comparatorSection, comparatorTable);
     });
   }
@@ -245,37 +265,62 @@ function attachFilterListeners({
   comparatorSection,
   comparatorTable,
 }) {
-  genreSelect.addEventListener('change', () => {
+  genreSelect.addEventListener("change", () => {
     currentFilters.genreId = genreSelect.value;
-    renderFilteredMovies(listEl, countBadge, comparatorSection, comparatorTable);
+    renderFilteredMovies(
+      listEl,
+      countBadge,
+      comparatorSection,
+      comparatorTable,
+    );
   });
 
-  yearInput.addEventListener('input', () => {
+  yearInput.addEventListener("input", () => {
     currentFilters.minYear = yearInput.value.trim();
-    renderFilteredMovies(listEl, countBadge, comparatorSection, comparatorTable);
+    renderFilteredMovies(
+      listEl,
+      countBadge,
+      comparatorSection,
+      comparatorTable,
+    );
   });
 
-  ratingRange.addEventListener('input', () => {
+  ratingRange.addEventListener("input", () => {
     currentFilters.minRating = Number(ratingRange.value);
     ratingValue.textContent = `(${ratingRange.value})`;
-    renderFilteredMovies(listEl, countBadge, comparatorSection, comparatorTable);
+    renderFilteredMovies(
+      listEl,
+      countBadge,
+      comparatorSection,
+      comparatorTable,
+    );
   });
 
-  languageSelect.addEventListener('change', () => {
+  languageSelect.addEventListener("change", () => {
     currentFilters.language = languageSelect.value;
-    renderFilteredMovies(listEl, countBadge, comparatorSection, comparatorTable);
+    renderFilteredMovies(
+      listEl,
+      countBadge,
+      comparatorSection,
+      comparatorTable,
+    );
   });
 
-  resetButton.addEventListener('click', () => {
+  resetButton.addEventListener("click", () => {
     currentFilters = { ...defaultFilters };
 
-    genreSelect.value = 'all';
-    yearInput.value = '';
-    ratingRange.value = '0';
-    ratingValue.textContent = '(0.0)';
-    languageSelect.value = 'all';
+    genreSelect.value = "all";
+    yearInput.value = "";
+    ratingRange.value = "0";
+    ratingValue.textContent = "(0.0)";
+    languageSelect.value = "all";
 
-    renderFilteredMovies(listEl, countBadge, comparatorSection, comparatorTable);
+    renderFilteredMovies(
+      listEl,
+      countBadge,
+      comparatorSection,
+      comparatorTable,
+    );
   });
 }
 
@@ -287,7 +332,7 @@ async function loadInitialData({
   comparatorSection,
   comparatorTable,
 }) {
-  listEl.innerHTML = '<p>Chargement des films populaires...</p>';
+  listEl.innerHTML = "<p>Chargement des films populaires...</p>";
 
   try {
     const [movies, genres] = await Promise.all([
@@ -295,24 +340,72 @@ async function loadInitialData({
       fetchMovieGenres(),
     ]);
 
+    if (!movies.length) {
+      listEl.innerHTML = "<p>Aucun film trouvé.</p>";
+      return;
+    }
+
+    // calculer un score pour chaque film, garder les listes globales à jour
+    const scored = scoreMovies(movies);
+    console.log("Films avec scores calculés :", scored);
+
+    // Mettre à jour le cache global utilisé par les filtres et le comparateur
+    allMovies = scored;
+    allGenres = genres;
+
+    // Hydrater les selects et rendre la liste filtrée (qui utilisera allMovies)
+    hydrateGenreSelect(genreSelect);
+    hydrateLanguageSelect(languageSelect);
+
+    renderFilteredMovies(
+      listEl,
+      countBadge,
+      comparatorSection,
+      comparatorTable,
+    );
+
+    // Gestion centrale des favoris (utilise maintenant allMovies)
+    document.addEventListener("click", (e) => {
+      const button = e.target.closest(".fav-btn");
+      if (!button) return;
+
+      const movieId = parseInt(button.dataset.id);
+
+      if (isFavorite(movieId)) {
+        removeFavorite(movieId);
+        button.classList.remove("active");
+      } else {
+        const movie = allMovies.find((m) => m.id === movieId);
+        addFavorite(movie);
+        button.classList.add("active");
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    listEl.innerHTML =
+      "<p>Erreur lors du chargement des films. Vérifie ta connexion et ta clé TMDB.</p>";
     allMovies = movies ?? [];
     allGenres = genres ?? [];
 
     if (!allMovies.length) {
-      listEl.innerHTML = '<p>Aucun film trouvé.</p>';
-      countBadge.textContent = '0 film';
+      listEl.innerHTML = "<p>Aucun film trouvé.</p>";
+      countBadge.textContent = "0 film";
       return;
     }
 
     hydrateGenreSelect(genreSelect);
     hydrateLanguageSelect(languageSelect);
 
-    renderFilteredMovies(listEl, countBadge, comparatorSection, comparatorTable);
-  } catch (error) {
+    renderFilteredMovies(
+      listEl,
+      countBadge,
+      comparatorSection,
+      comparatorTable,
+    );
     console.error(error);
     listEl.innerHTML =
-      '<p>Erreur lors du chargement des films. Vérifie ta connexion et ta clé TMDB.</p>';
-    countBadge.textContent = 'Erreur';
+      "<p>Erreur lors du chargement des films. Vérifie ta connexion et ta clé TMDB.</p>";
+    countBadge.textContent = "Erreur";
   }
 }
 
@@ -320,11 +413,8 @@ function hydrateGenreSelect(selectEl) {
   selectEl.innerHTML =
     '<option value="all">Tous les genres</option>' +
     allGenres
-      .map(
-        (genre) =>
-          `<option value="${genre.id}">${genre.name}</option>`,
-      )
-      .join('');
+      .map((genre) => `<option value="${genre.id}">${genre.name}</option>`)
+      .join("");
 }
 
 function hydrateLanguageSelect(selectEl) {
@@ -335,27 +425,29 @@ function hydrateLanguageSelect(selectEl) {
   selectEl.innerHTML =
     '<option value="all">Toutes les langues</option>' +
     uniqueLanguages
-      .map(
-        (code) =>
-          `<option value="${code}">${code.toUpperCase()}</option>`,
-      )
-      .join('');
+      .map((code) => `<option value="${code}">${code.toUpperCase()}</option>`)
+      .join("");
 }
 
-function renderFilteredMovies(listEl, countBadge, comparatorSection, comparatorTable) {
+function renderFilteredMovies(
+  listEl,
+  countBadge,
+  comparatorSection,
+  comparatorTable,
+) {
   if (!allMovies.length) {
-    listEl.innerHTML = '<p>Aucun film à afficher.</p>';
-    countBadge.textContent = '0 film';
+    listEl.innerHTML = "<p>Aucun film à afficher.</p>";
+    countBadge.textContent = "0 film";
     updateComparator(comparatorSection, comparatorTable);
     return;
   }
 
   const nowYear = new Date().getFullYear();
-  const popStats = getMinMax(allMovies, 'popularity');
-  const ratingStats = getMinMax(allMovies, 'vote_average');
+  const popStats = getMinMax(allMovies, "popularity");
+  const ratingStats = getMinMax(allMovies, "vote_average");
   const yearStats = getMinMax(
-    allMovies.filter(m => m.release_date),
-    'release_date'
+    allMovies.filter((m) => m.release_date),
+    "release_date",
   );
 
   // Filtrage
@@ -366,7 +458,7 @@ function renderFilteredMovies(listEl, countBadge, comparatorSection, comparatorT
 
     // Genre
     if (
-      currentFilters.genreId !== 'all' &&
+      currentFilters.genreId !== "all" &&
       !movie.genre_ids.includes(Number(currentFilters.genreId))
     ) {
       return false;
@@ -390,7 +482,7 @@ function renderFilteredMovies(listEl, countBadge, comparatorSection, comparatorT
 
     // Langue
     if (
-      currentFilters.language !== 'all' &&
+      currentFilters.language !== "all" &&
       movie.original_language !== currentFilters.language
     ) {
       return false;
@@ -401,23 +493,33 @@ function renderFilteredMovies(listEl, countBadge, comparatorSection, comparatorT
 
   if (!filtered.length) {
     listEl.innerHTML =
-      '<p>Aucun film ne correspond aux critères sélectionnés. Essaie d’élargir les filtres.</p>';
-    countBadge.textContent = '0 film';
+      "<p>Aucun film ne correspond aux critères sélectionnés. Essaie d’élargir les filtres.</p>";
+    countBadge.textContent = "0 film";
     return;
   }
 
   // Calcul du score pondéré
   function computeScore(movie) {
-    const weights = window.recommendationWeights || { popularity: 1, rating: 1, recency: 1 };
+    const weights = window.recommendationWeights || {
+      popularity: 1,
+      rating: 1,
+      recency: 1,
+    };
     // Popularité normalisée
     let popNorm = 0;
-    if (typeof movie.popularity === 'number' && popStats.max > popStats.min) {
-      popNorm = (movie.popularity - popStats.min) / (popStats.max - popStats.min);
+    if (typeof movie.popularity === "number" && popStats.max > popStats.min) {
+      popNorm =
+        (movie.popularity - popStats.min) / (popStats.max - popStats.min);
     }
     // Note normalisée
     let ratingNorm = 0;
-    if (typeof movie.vote_average === 'number' && ratingStats.max > ratingStats.min) {
-      ratingNorm = (movie.vote_average - ratingStats.min) / (ratingStats.max - ratingStats.min);
+    if (
+      typeof movie.vote_average === "number" &&
+      ratingStats.max > ratingStats.min
+    ) {
+      ratingNorm =
+        (movie.vote_average - ratingStats.min) /
+        (ratingStats.max - ratingStats.min);
     }
     // Récence normalisée (plus récent = score plus haut)
     let recencyNorm = 0;
@@ -434,11 +536,11 @@ function renderFilteredMovies(listEl, countBadge, comparatorSection, comparatorT
     );
   }
 
-  const sorted = filtered.slice().sort((a, b) => computeScore(b) - computeScore(a));
+  const sorted = filtered
+    .slice()
+    .sort((a, b) => computeScore(b) - computeScore(a));
 
-  listEl.innerHTML = sorted
-    .map((movie) => createMovieCardHtml(movie))
-    .join('');
+  listEl.innerHTML = sorted.map((movie) => createMovieCardHtml(movie)).join("");
 
   // Attacher les event listeners pour les boutons de comparaison
   if (comparatorSection && comparatorTable) {
@@ -449,7 +551,7 @@ function renderFilteredMovies(listEl, countBadge, comparatorSection, comparatorT
   // Attacher les event listeners pour ouvrir les détails du film
   attachMovieCardClickListeners(listEl);
 
-  const suffix = sorted.length > 1 ? 'films' : 'film';
+  const suffix = sorted.length > 1 ? "films" : "film";
   countBadge.textContent = `${sorted.length} ${suffix}`;
 
   // Mettre à jour le dashboard de statistiques
@@ -458,17 +560,17 @@ function renderFilteredMovies(listEl, countBadge, comparatorSection, comparatorT
 
 function surpriseMe(listEl, countBadge, comparatorSection, comparatorTable) {
   if (!allMovies.length) {
-    alert('Aucun film disponible pour la surprise !');
+    alert("Aucun film disponible pour la surprise !");
     return;
   }
 
   // Récupérer les films filtrés (même logique que renderFilteredMovies)
   const nowYear = new Date().getFullYear();
-  const popStats = getMinMax(allMovies, 'popularity');
-  const ratingStats = getMinMax(allMovies, 'vote_average');
+  const popStats = getMinMax(allMovies, "popularity");
+  const ratingStats = getMinMax(allMovies, "vote_average");
   const yearStats = getMinMax(
     allMovies.filter((m) => m.release_date),
-    'release_date',
+    "release_date",
   );
 
   // Filtrage
@@ -479,7 +581,7 @@ function surpriseMe(listEl, countBadge, comparatorSection, comparatorTable) {
 
     // Genre
     if (
-      currentFilters.genreId !== 'all' &&
+      currentFilters.genreId !== "all" &&
       !movie.genre_ids.includes(Number(currentFilters.genreId))
     ) {
       return false;
@@ -503,7 +605,7 @@ function surpriseMe(listEl, countBadge, comparatorSection, comparatorTable) {
 
     // Langue
     if (
-      currentFilters.language !== 'all' &&
+      currentFilters.language !== "all" &&
       movie.original_language !== currentFilters.language
     ) {
       return false;
@@ -514,28 +616,28 @@ function surpriseMe(listEl, countBadge, comparatorSection, comparatorTable) {
 
   if (!filtered.length) {
     alert(
-      'Aucun film ne correspond à tes critères. Essaie d\'élargir les filtres !',
+      "Aucun film ne correspond à tes critères. Essaie d'élargir les filtres !",
     );
     return;
   }
 
   // Calcul du score pondéré (même logique que renderFilteredMovies)
   function computeScore(movie) {
-    const weights =
-      window.recommendationWeights || { popularity: 1, rating: 1, recency: 1 };
+    const weights = window.recommendationWeights || {
+      popularity: 1,
+      rating: 1,
+      recency: 1,
+    };
     // Popularité normalisée
     let popNorm = 0;
-    if (
-      typeof movie.popularity === 'number' &&
-      popStats.max > popStats.min
-    ) {
+    if (typeof movie.popularity === "number" && popStats.max > popStats.min) {
       popNorm =
         (movie.popularity - popStats.min) / (popStats.max - popStats.min);
     }
     // Note normalisée
     let ratingNorm = 0;
     if (
-      typeof movie.vote_average === 'number' &&
+      typeof movie.vote_average === "number" &&
       ratingStats.max > ratingStats.min
     ) {
       ratingNorm =
@@ -547,8 +649,7 @@ function surpriseMe(listEl, countBadge, comparatorSection, comparatorTable) {
     if (movie.release_date) {
       const year = Number(movie.release_date.slice(0, 4));
       if (!isNaN(year) && yearStats.max > yearStats.min) {
-        recencyNorm =
-          (year - yearStats.min) / (yearStats.max - yearStats.min);
+        recencyNorm = (year - yearStats.min) / (yearStats.max - yearStats.min);
       }
     }
     return (
@@ -568,10 +669,7 @@ function surpriseMe(listEl, countBadge, comparatorSection, comparatorTable) {
   moviesWithScores.sort((a, b) => b.score - a.score);
 
   // Sélection intelligente : prendre parmi les meilleurs (top 30% ou au moins top 5)
-  const topCount = Math.max(
-    5,
-    Math.ceil(moviesWithScores.length * 0.3),
-  );
+  const topCount = Math.max(5, Math.ceil(moviesWithScores.length * 0.3));
   const topMovies = moviesWithScores.slice(0, topCount);
 
   // Sélectionner aléatoirement parmi les meilleurs
@@ -588,27 +686,27 @@ function surpriseMe(listEl, countBadge, comparatorSection, comparatorTable) {
     );
     if (movieCard) {
       // Ajouter une classe pour l'animation
-      movieCard.classList.add('surprise-selected');
+      movieCard.classList.add("surprise-selected");
 
       // Scroll jusqu'au film
       movieCard.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
+        behavior: "smooth",
+        block: "center",
       });
 
       // Retirer la classe après l'animation
       setTimeout(() => {
-        movieCard.classList.remove('surprise-selected');
+        movieCard.classList.remove("surprise-selected");
       }, 2000);
     }
   }, 100);
 }
 
 function updateDashboard(movies) {
-  const avgRatingEl = document.getElementById('stats-average-rating');
-  const mostPopularEl = document.getElementById('stats-most-popular');
-  const mostRecentEl = document.getElementById('stats-most-recent');
-  const genreChartEl = document.getElementById('stats-genre-chart');
+  const avgRatingEl = document.getElementById("stats-average-rating");
+  const mostPopularEl = document.getElementById("stats-most-popular");
+  const mostRecentEl = document.getElementById("stats-most-recent");
+  const genreChartEl = document.getElementById("stats-genre-chart");
 
   if (!avgRatingEl || !mostPopularEl || !mostRecentEl || !genreChartEl) {
     return; // Les éléments n'existent pas encore
@@ -616,9 +714,9 @@ function updateDashboard(movies) {
 
   if (!movies || movies.length === 0) {
     // Afficher des valeurs par défaut si aucun film
-    avgRatingEl.textContent = '—';
-    mostPopularEl.textContent = '—';
-    mostRecentEl.textContent = '—';
+    avgRatingEl.textContent = "—";
+    mostPopularEl.textContent = "—";
+    mostRecentEl.textContent = "—";
     genreChartEl.innerHTML = '<p class="no-data">Aucune donnée disponible</p>';
     return;
   }
@@ -626,20 +724,20 @@ function updateDashboard(movies) {
   // 1. Moyenne des notes
   const ratings = movies
     .map((m) => m.vote_average)
-    .filter((r) => typeof r === 'number' && r > 0);
+    .filter((r) => typeof r === "number" && r > 0);
   const averageRating =
     ratings.length > 0
       ? (ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(1)
-      : '—';
+      : "—";
   avgRatingEl.textContent =
-    averageRating !== '—' ? `${averageRating} / 10` : '—';
+    averageRating !== "—" ? `${averageRating} / 10` : "—";
 
   // 2. Film le plus populaire
   const mostPopular = movies.reduce((max, movie) => {
     const pop = movie.popularity ?? 0;
     return pop > (max.popularity ?? 0) ? movie : max;
   }, movies[0]);
-  mostPopularEl.textContent = mostPopular.title || '—';
+  mostPopularEl.textContent = mostPopular.title || "—";
 
   // 3. Film le plus récent
   const mostRecent = movies.reduce((latest, movie) => {
@@ -651,14 +749,14 @@ function updateDashboard(movies) {
   }, movies[0]);
   mostRecentEl.textContent = mostRecent.release_date
     ? `${mostRecent.title} (${mostRecent.release_date.slice(0, 4)})`
-    : '—';
+    : "—";
 
   // 4. Répartition par genre
   updateGenreChart(movies);
 }
 
 function updateGenreChart(movies) {
-  const chartEl = document.getElementById('stats-genre-chart');
+  const chartEl = document.getElementById("stats-genre-chart");
   if (!chartEl) return;
 
   // Compter les occurrences de chaque genre
@@ -697,7 +795,7 @@ function updateGenreChart(movies) {
             <div 
               class="genre-chart__bar" 
               style="width: ${percentage}%"
-              title="${count} film${count > 1 ? 's' : ''}"
+              title="${count} film${count > 1 ? "s" : ""}"
             >
               <span class="genre-chart__value">${count}</span>
             </div>
@@ -705,29 +803,41 @@ function updateGenreChart(movies) {
         </div>
       `;
     })
-    .join('');
+    .join("");
 }
 
 function attachComparisonButtons(listEl, comparatorSection, comparatorTable) {
-  const buttons = listEl.querySelectorAll('.movie-card__compare-btn');
+  const buttons = listEl.querySelectorAll(".movie-card__compare-btn");
   buttons.forEach((btn) => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const movieId = Number(btn.dataset.movieId || e.currentTarget.dataset.movieId);
+      const movieId = Number(
+        btn.dataset.movieId || e.currentTarget.dataset.movieId,
+      );
       if (!movieId || isNaN(movieId)) {
-        console.error('Movie ID not found', btn);
+        console.error("Movie ID not found", btn);
         return;
       }
-      toggleMovieForComparison(movieId, listEl, comparatorSection, comparatorTable);
+      toggleMovieForComparison(
+        movieId,
+        listEl,
+        comparatorSection,
+        comparatorTable,
+      );
     });
   });
 }
 
-function toggleMovieForComparison(movieId, listEl, comparatorSection, comparatorTable) {
+function toggleMovieForComparison(
+  movieId,
+  listEl,
+  comparatorSection,
+  comparatorTable,
+) {
   const movie = allMovies.find((m) => m.id === movieId);
   if (!movie) {
-    console.error('Movie not found:', movieId);
+    console.error("Movie not found:", movieId);
     return;
   }
 
@@ -745,20 +855,25 @@ function toggleMovieForComparison(movieId, listEl, comparatorSection, comparator
   }
 
   // Re-rendre les cartes pour mettre à jour les boutons
-  const countBadge = document.querySelector('#movies-count-badge');
+  const countBadge = document.querySelector("#movies-count-badge");
   if (listEl && countBadge) {
-    renderFilteredMovies(listEl, countBadge, comparatorSection, comparatorTable);
+    renderFilteredMovies(
+      listEl,
+      countBadge,
+      comparatorSection,
+      comparatorTable,
+    );
   }
 }
 
 function attachMovieCardClickListeners(listEl) {
-  const clickableCards = listEl.querySelectorAll('.movie-card__clickable');
+  const clickableCards = listEl.querySelectorAll(".movie-card__clickable");
   clickableCards.forEach((card) => {
-    card.addEventListener('click', async (e) => {
+    card.addEventListener("click", async (e) => {
       e.stopPropagation();
       const movieId = Number(card.dataset.movieId);
       if (!movieId || isNaN(movieId)) {
-        console.error('Movie ID not found', card);
+        console.error("Movie ID not found", card);
         return;
       }
       await showMovieDetails(movieId);
@@ -776,13 +891,13 @@ async function showMovieDetails(movieId) {
     </div>
   `;
   document.body.appendChild(modal);
-  modal.style.display = 'flex';
+  modal.style.display = "flex";
 
   // Fermer la modal
-  modal.querySelector('.movie-modal__close').addEventListener('click', () => {
+  modal.querySelector(".movie-modal__close").addEventListener("click", () => {
     modal.remove();
   });
-  modal.addEventListener('click', (e) => {
+  modal.addEventListener("click", (e) => {
     if (e.target === modal) {
       modal.remove();
     }
@@ -792,88 +907,94 @@ async function showMovieDetails(movieId) {
     const details = await fetchMovieDetails(movieId);
     renderMovieDetails(modal, details);
   } catch (error) {
-    console.error('Erreur lors du chargement des détails:', error);
-    modal.querySelector('.movie-modal__content').innerHTML = `
+    console.error("Erreur lors du chargement des détails:", error);
+    modal.querySelector(".movie-modal__content").innerHTML = `
       <button class="movie-modal__close">&times;</button>
       <div class="movie-modal__error">
         Erreur lors du chargement des détails du film.
       </div>
     `;
-    modal.querySelector('.movie-modal__close').addEventListener('click', () => {
+    modal.querySelector(".movie-modal__close").addEventListener("click", () => {
       modal.remove();
     });
   }
 }
 
 function createModal() {
-  const existingModal = document.querySelector('.movie-modal');
+  const existingModal = document.querySelector(".movie-modal");
   if (existingModal) {
     existingModal.remove();
   }
-  const modal = document.createElement('div');
-  modal.className = 'movie-modal';
+  const modal = document.createElement("div");
+  modal.className = "movie-modal";
   return modal;
 }
 
 function renderMovieDetails(modal, details) {
   const posterUrl = details.poster_path
     ? `https://image.tmdb.org/t/p/w500${details.poster_path}`
-    : '';
+    : "";
   const backdropUrl = details.backdrop_path
     ? `https://image.tmdb.org/t/w1280${details.backdrop_path}`
-    : '';
+    : "";
 
   const genres = details.genres
-    ? details.genres.map((g) => g.name).join(', ')
-    : 'Non spécifié';
+    ? details.genres.map((g) => g.name).join(", ")
+    : "Non spécifié";
 
   const directors =
     details.credits && details.credits.crew
       ? details.credits.crew
-          .filter((p) => p.job === 'Director')
+          .filter((p) => p.job === "Director")
           .map((p) => p.name)
-          .join(', ')
-      : 'Non spécifié';
+          .join(", ")
+      : "Non spécifié";
 
   const cast =
     details.credits && details.credits.cast
-      ? details.credits.cast.slice(0, 5).map((a) => a.name).join(', ')
-      : 'Non spécifié';
+      ? details.credits.cast
+          .slice(0, 5)
+          .map((a) => a.name)
+          .join(", ")
+      : "Non spécifié";
 
   const runtime = details.runtime
     ? `${Math.floor(details.runtime / 60)}h ${details.runtime % 60}min`
-    : 'Non spécifié';
+    : "Non spécifié";
 
   const releaseDate = details.release_date
-    ? new Date(details.release_date).toLocaleDateString('fr-FR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+    ? new Date(details.release_date).toLocaleDateString("fr-FR", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
       })
-    : 'Non spécifié';
+    : "Non spécifié";
 
-  const budget = details.budget && details.budget > 0
-    ? new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0,
-      }).format(details.budget)
-    : 'Non spécifié';
+  const budget =
+    details.budget && details.budget > 0
+      ? new Intl.NumberFormat("fr-FR", {
+          style: "currency",
+          currency: "USD",
+          minimumFractionDigits: 0,
+        }).format(details.budget)
+      : "Non spécifié";
 
-  const revenue = details.revenue && details.revenue > 0
-    ? new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0,
-      }).format(details.revenue)
-    : 'Non spécifié';
+  const revenue =
+    details.revenue && details.revenue > 0
+      ? new Intl.NumberFormat("fr-FR", {
+          style: "currency",
+          currency: "USD",
+          minimumFractionDigits: 0,
+        }).format(details.revenue)
+      : "Non spécifié";
 
   // Trouver le trailer (YouTube)
-  const trailer = details.videos && details.videos.results
-    ? details.videos.results.find(
-        (v) => v.type === 'Trailer' && v.site === 'YouTube',
-      )
-    : null;
+  const trailer =
+    details.videos && details.videos.results
+      ? details.videos.results.find(
+          (v) => v.type === "Trailer" && v.site === "YouTube",
+        )
+      : null;
 
   modal.innerHTML = `
     <div class="movie-modal__content">
@@ -881,12 +1002,12 @@ function renderMovieDetails(modal, details) {
       <div class="movie-modal__header" style="background-image: url('${backdropUrl}')">
         <div class="movie-modal__header-overlay"></div>
         <div class="movie-modal__header-content">
-          ${posterUrl ? `<img class="movie-modal__poster" src="${posterUrl}" alt="${details.title}" />` : ''}
+          ${posterUrl ? `<img class="movie-modal__poster" src="${posterUrl}" alt="${details.title}" />` : ""}
           <div class="movie-modal__header-info">
             <h2 class="movie-modal__title">${details.title}</h2>
-            ${details.tagline ? `<p class="movie-modal__tagline">${details.tagline}</p>` : ''}
+            ${details.tagline ? `<p class="movie-modal__tagline">${details.tagline}</p>` : ""}
             <div class="movie-modal__quick-info">
-              <span>⭐ ${details.vote_average ? details.vote_average.toFixed(1) : '—'} / 10</span>
+              <span>⭐ ${details.vote_average ? details.vote_average.toFixed(1) : "—"} / 10</span>
               <span>📅 ${releaseDate}</span>
               <span>⏱️ ${runtime}</span>
             </div>
@@ -894,7 +1015,9 @@ function renderMovieDetails(modal, details) {
         </div>
       </div>
       <div class="movie-modal__body">
-        ${trailer ? `
+        ${
+          trailer
+            ? `
         <div class="movie-modal__section">
           <h3>🎬 Bande-annonce</h3>
           <div class="movie-modal__trailer">
@@ -908,10 +1031,12 @@ function renderMovieDetails(modal, details) {
             ></iframe>
           </div>
         </div>
-        ` : ''}
+        `
+            : ""
+        }
         <div class="movie-modal__section">
           <h3>Synopsis</h3>
-          <p>${details.overview || 'Aucun synopsis disponible.'}</p>
+          <p>${details.overview || "Aucun synopsis disponible."}</p>
         </div>
         <div class="movie-modal__section">
           <h3>Informations</h3>
@@ -932,7 +1057,7 @@ function renderMovieDetails(modal, details) {
               <strong>Recettes:</strong> ${revenue}
             </div>
             <div class="movie-modal__info-item">
-              <strong>Note moyenne:</strong> ${details.vote_average ? details.vote_average.toFixed(1) : '—'} / 10 (${details.vote_count || 0} votes)
+              <strong>Note moyenne:</strong> ${details.vote_average ? details.vote_average.toFixed(1) : "—"} / 10 (${details.vote_count || 0} votes)
             </div>
           </div>
         </div>
@@ -941,10 +1066,10 @@ function renderMovieDetails(modal, details) {
   `;
 
   // Réattacher les event listeners
-  modal.querySelector('.movie-modal__close').addEventListener('click', () => {
+  modal.querySelector(".movie-modal__close").addEventListener("click", () => {
     modal.remove();
   });
-  modal.addEventListener('click', (e) => {
+  modal.addEventListener("click", (e) => {
     if (e.target === modal) {
       modal.remove();
     }
@@ -952,56 +1077,56 @@ function renderMovieDetails(modal, details) {
 
   // Fermer avec Échap
   const handleEscape = (e) => {
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       modal.remove();
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener("keydown", handleEscape);
     }
   };
-  document.addEventListener('keydown', handleEscape);
+  document.addEventListener("keydown", handleEscape);
 }
 
 function updateComparator(comparatorSection, comparatorTable) {
   if (!comparatorSection || !comparatorTable) return;
 
   if (selectedMoviesForComparison.length === 2) {
-    comparatorSection.style.display = 'block';
+    comparatorSection.style.display = "block";
     comparatorTable.innerHTML = renderComparisonTable(
       selectedMoviesForComparison[0],
       selectedMoviesForComparison[1],
     );
   } else {
-    comparatorSection.style.display = 'none';
-    comparatorTable.innerHTML = '';
+    comparatorSection.style.display = "none";
+    comparatorTable.innerHTML = "";
   }
 }
 
 function renderComparisonTable(movie1, movie2) {
   const formatDate = (dateStr) => {
-    if (!dateStr) return 'N/A';
+    if (!dateStr) return "N/A";
     return dateStr.slice(0, 4);
   };
 
   const formatPopularity = (pop) => {
-    if (typeof pop !== 'number') return 'N/A';
+    if (typeof pop !== "number") return "N/A";
     return pop.toFixed(2);
   };
 
   const formatRating = (rating) => {
-    if (typeof rating !== 'number') return 'N/A';
+    if (typeof rating !== "number") return "N/A";
     return rating.toFixed(1);
   };
 
   const formatVoteCount = (count) => {
-    if (typeof count !== 'number') return 'N/A';
-    return count.toLocaleString('fr-FR');
+    if (typeof count !== "number") return "N/A";
+    return count.toLocaleString("fr-FR");
   };
 
   const poster1 = movie1.poster_path
     ? `https://image.tmdb.org/t/p/w154${movie1.poster_path}`
-    : '';
+    : "";
   const poster2 = movie2.poster_path
     ? `https://image.tmdb.org/t/p/w154${movie2.poster_path}`
-    : '';
+    : "";
 
   return `
     <table class="comparison-table">
@@ -1010,13 +1135,13 @@ function renderComparisonTable(movie1, movie2) {
           <th></th>
           <th>
             <div class="comparison-movie-header">
-              ${poster1 ? `<img src="${poster1}" alt="${movie1.title}" />` : ''}
+              ${poster1 ? `<img src="${poster1}" alt="${movie1.title}" />` : ""}
               <span>${movie1.title}</span>
             </div>
           </th>
           <th>
             <div class="comparison-movie-header">
-              ${poster2 ? `<img src="${poster2}" alt="${movie2.title}" />` : ''}
+              ${poster2 ? `<img src="${poster2}" alt="${movie2.title}" />` : ""}
               <span>${movie2.title}</span>
             </div>
           </th>
@@ -1025,19 +1150,19 @@ function renderComparisonTable(movie1, movie2) {
       <tbody>
         <tr>
           <td class="comparison-label">Note</td>
-          <td class="comparison-value ${movie1.vote_average > movie2.vote_average ? 'winner' : ''}">
+          <td class="comparison-value ${movie1.vote_average > movie2.vote_average ? "winner" : ""}">
             ⭐ ${formatRating(movie1.vote_average)}
           </td>
-          <td class="comparison-value ${movie2.vote_average > movie1.vote_average ? 'winner' : ''}">
+          <td class="comparison-value ${movie2.vote_average > movie1.vote_average ? "winner" : ""}">
             ⭐ ${formatRating(movie2.vote_average)}
           </td>
         </tr>
         <tr>
           <td class="comparison-label">Popularité</td>
-          <td class="comparison-value ${movie1.popularity > movie2.popularity ? 'winner' : ''}">
+          <td class="comparison-value ${movie1.popularity > movie2.popularity ? "winner" : ""}">
             ${formatPopularity(movie1.popularity)}
           </td>
-          <td class="comparison-value ${movie2.popularity > movie1.popularity ? 'winner' : ''}">
+          <td class="comparison-value ${movie2.popularity > movie1.popularity ? "winner" : ""}">
             ${formatPopularity(movie2.popularity)}
           </td>
         </tr>
@@ -1052,10 +1177,10 @@ function renderComparisonTable(movie1, movie2) {
         </tr>
         <tr>
           <td class="comparison-label">Nombre de votes</td>
-          <td class="comparison-value ${movie1.vote_count > movie2.vote_count ? 'winner' : ''}">
+          <td class="comparison-value ${movie1.vote_count > movie2.vote_count ? "winner" : ""}">
             ${formatVoteCount(movie1.vote_count)}
           </td>
-          <td class="comparison-value ${movie2.vote_count > movie1.vote_count ? 'winner' : ''}">
+          <td class="comparison-value ${movie2.vote_count > movie1.vote_count ? "winner" : ""}">
             ${formatVoteCount(movie2.vote_count)}
           </td>
         </tr>
@@ -1068,13 +1193,13 @@ function getMinMax(arr, key) {
   let min = Infinity,
     max = -Infinity;
   for (const m of arr) {
-    if (key === 'release_date' && m[key]) {
+    if (key === "release_date" && m[key]) {
       const year = Number(m[key].slice(0, 4));
       if (!isNaN(year)) {
         if (year < min) min = year;
         if (year > max) max = year;
       }
-    } else if (typeof m[key] === 'number') {
+    } else if (typeof m[key] === "number") {
       if (m[key] < min) min = m[key];
       if (m[key] > max) max = m[key];
     }
@@ -1091,11 +1216,11 @@ function analyzeRecommendationReasons(movie, allMovies) {
   };
 
   // Calcul des valeurs normalisées pour comparaison
-  const popStats = getMinMax(allMovies, 'popularity');
-  const ratingStats = getMinMax(allMovies, 'vote_average');
+  const popStats = getMinMax(allMovies, "popularity");
+  const ratingStats = getMinMax(allMovies, "vote_average");
   const yearStats = getMinMax(
     allMovies.filter((m) => m.release_date),
-    'release_date',
+    "release_date",
   );
 
   const nowYear = new Date().getFullYear();
@@ -1103,13 +1228,13 @@ function analyzeRecommendationReasons(movie, allMovies) {
   // 1. Note élevée
   if (movie.vote_average >= 7.5) {
     reasons.push({
-      text: 'Note élevée',
+      text: "Note élevée",
       strength: movie.vote_average / 10,
       weight: weights.rating,
     });
   } else if (movie.vote_average >= 6.5) {
     reasons.push({
-      text: 'Bonne note',
+      text: "Bonne note",
       strength: movie.vote_average / 10,
       weight: weights.rating,
     });
@@ -1121,13 +1246,13 @@ function analyzeRecommendationReasons(movie, allMovies) {
     const yearsAgo = nowYear - year;
     if (yearsAgo <= 2) {
       reasons.push({
-        text: 'Film très récent',
+        text: "Film très récent",
         strength: 1 - yearsAgo / 5,
         weight: weights.recency,
       });
     } else if (yearsAgo <= 5) {
       reasons.push({
-        text: 'Film récent',
+        text: "Film récent",
         strength: 1 - yearsAgo / 10,
         weight: weights.recency,
       });
@@ -1136,12 +1261,12 @@ function analyzeRecommendationReasons(movie, allMovies) {
 
   // 3. Correspond à vos genres favoris (si un filtre genre est actif)
   if (
-    currentFilters.genreId !== 'all' &&
+    currentFilters.genreId !== "all" &&
     movie.genre_ids.includes(Number(currentFilters.genreId))
   ) {
     const genreName =
       allGenres.find((g) => g.id === Number(currentFilters.genreId))?.name ||
-      '';
+      "";
     reasons.push({
       text: `Correspond à vos genres favoris`,
       strength: 1,
@@ -1157,13 +1282,13 @@ function analyzeRecommendationReasons(movie, allMovies) {
         : 0;
     if (popNorm >= 0.7) {
       reasons.push({
-        text: 'Très populaire',
+        text: "Très populaire",
         strength: popNorm,
         weight: weights.popularity,
       });
     } else if (popNorm >= 0.5) {
       reasons.push({
-        text: 'Populaire',
+        text: "Populaire",
         strength: popNorm,
         weight: weights.popularity,
       });
@@ -1173,7 +1298,7 @@ function analyzeRecommendationReasons(movie, allMovies) {
   // 5. Nombre de votes élevé (fiabilité)
   if (movie.vote_count >= 1000) {
     reasons.push({
-      text: 'Bien noté par de nombreux spectateurs',
+      text: "Bien noté par de nombreux spectateurs",
       strength: Math.min(movie.vote_count / 5000, 1),
       weight: 0.8,
     });
@@ -1186,56 +1311,67 @@ function analyzeRecommendationReasons(movie, allMovies) {
 
 function generateExplanationText(reasons) {
   if (reasons.length === 0) {
-    return 'Recommandé pour sa diversité de critères.';
+    return "Recommandé pour sa diversité de critères.";
   }
 
-  const reasonsText = reasons.map((r) => r.text).join('</li><li>');
+  const reasonsText = reasons.map((r) => r.text).join("</li><li>");
   return `Recommandé car :<ul class="explanation-list"><li>${reasonsText}</li></ul>`;
 }
 
 function createMovieCardHtml(movie) {
+  const favorite = isFavorite(movie.id);
   const posterUrl = movie.poster_path
     ? `https://image.tmdb.org/t/p/w342${movie.poster_path}`
-    : '';
+    : "";
 
-  const year = movie.release_date ? movie.release_date.slice(0, 4) : 'N/A';
-  const rating = movie.vote_average ? movie.vote_average.toFixed(1) : '—';
+  const year = movie.release_date ? movie.release_date.slice(0, 4) : "N/A";
+  const rating = movie.vote_average ? movie.vote_average.toFixed(1) : "—";
+  const score = movie._score !== undefined ? formatScore(movie._score) : null;
 
   // Analyse des raisons de recommandation
   const reasons = analyzeRecommendationReasons(movie, allMovies);
   const explanation = generateExplanationText(reasons);
 
-  const isSelected = selectedMoviesForComparison.some(
-    (m) => m.id === movie.id,
-  );
+  const isSelected = selectedMoviesForComparison.some((m) => m.id === movie.id);
   const canSelect = selectedMoviesForComparison.length < 2;
 
   return `
     <article class="movie-card" data-movie-id="${movie.id}">
       <div class="movie-card__clickable" data-movie-id="${movie.id}" title="Cliquer pour voir les détails">
-        ${
-          posterUrl
-            ? `<img class="movie-card__poster" src="${posterUrl}" alt="${movie.title}" loading="lazy" />`
-            : '<div class="movie-card__poster"></div>'
-        }
-        <h3 class="movie-card__title">${movie.title}</h3>
-        <div class="movie-card__meta">
-          <span>${year}</span>
-          <span>⭐ ${rating}</span>
-        </div>
+      ${
+        posterUrl
+          ? `<img class="movie-card__poster" src="${posterUrl}" alt="${movie.title}" loading="lazy" />`
+          : '<div class="movie-card__poster"></div>'
+      }
+      <h3 class="movie-card__title">${movie.title}</h3>
+      <div class="movie-card__meta">
+        <span>${year}</span>
+        <span>⭐ ${rating}</span>
+        ${score !== null ? `<span class="movie-card__score">Score: ${score}</span>` : ""}
+      <button class="fav-btn ${favorite ? "active" : ""}" data-id="${movie.id}">
+        <svg viewBox="0 0 24 24" class="heart-icon">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 
+          2 6 4 4 6.5 4 
+          8.04 4 9.54 4.81 10.4 6.09 
+          11.26 4.81 12.76 4 14.3 4 
+          16.8 4 18.8 6 18.8 8.5 
+          18.8 12.28 15.4 15.36 10.25 20.03L12 21.35z"/>
+        </svg>
+      </button>
+      </div>
+              </div>
         <div class="movie-card__explanation">
           ${explanation}
         </div>
-      </div>
-      <button 
-        class="movie-card__compare-btn ${isSelected ? 'selected' : ''}" 
+   </div>
+         <button 
+        class="movie-card__compare-btn ${isSelected ? "selected" : ""}" 
         data-movie-id="${movie.id}"
-        ${!canSelect && !isSelected ? 'disabled' : ''}
-        title="${isSelected ? 'Retirer de la comparaison' : canSelect ? 'Ajouter à la comparaison' : 'Maximum 2 films pour comparer'}"
+        ${!canSelect && !isSelected ? "disabled" : ""}
+        title="${isSelected ? "Retirer de la comparaison" : canSelect ? "Ajouter à la comparaison" : "Maximum 2 films pour comparer"}"
       >
-        ${isSelected ? '✓ Sélectionné' : 'Comparer'}
+        ${isSelected ? "✓ Sélectionné" : "Comparer"}
       </button>
-    </article>
+   </article>
   `;
 }
-
